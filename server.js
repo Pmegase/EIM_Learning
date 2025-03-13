@@ -1,45 +1,38 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
-require('dotenv').config(); // Load environment variables
-
+require('dotenv').config();
+const multer = require('multer');
+const upload = multer();
 const app = express();
 const port = 3000;
 
 app.use(express.static('public'));
-app.use(express.json()); // Parses JSON requests
-app.use(express.urlencoded({ extended: true })); // Parses URL-encoded form data
+app.use(express.json());
 
-// 📌 POST route for sending email
-app.post('/send-email', async (req, res) => {
+app.post('/send-email', (req, res) => {
     let transporter = nodemailer.createTransport({
-        host: "smtp.office365.com", // Office 365 SMTP server
-        port: 587, // Use port 587 for TLS (recommended)
-        secure: false, // Must be false for TLS
+        service: 'gmail',
         auth: {
-            user: process.env.EMAIL_USER, // Your Office 365 email
-            pass: process.env.EMAIL_PASS  // Your Office 365 password or App Password
-        },
-        tls: {
-            ciphers: 'SSLv3'
+            user: process.env.EMAIL_USER, // Use environment variable
+            pass: process.env.EMAIL_PASS  // Use environment variable
         }
     });
 
     const mailOptions = {
-        from: process.env.EMAIL_USER, // Sender email
-        to: 'eimconsultld@gmail.com', // Recipient email
-        subject: req.body.subject || "No Subject", // Email subject (handle missing subject)
-        text: `Message from: ${req.body.first_name || "Unknown"} ${req.body.last_name || ""} (${req.body.email || "No Email"})\n\n${req.body.message || "No Message"}` // Email body
+        from: process.env.EMAIL_USER, // sender address
+        to: 'info@eimconsultld.com', // list of receivers
+        subject: req.body.subject, // Subject line
+        text: `Message from: ${req.body.first_name} ${req.body.last_name} (${req.body.email})\n\n${req.body.message}` // plain text body
     };
 
-    try {
-        let info = await transporter.sendMail(mailOptions);
-        res.status(200).json({ success: true, message: 'Email sent successfully!', info: info.response });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            return res.status(500).send('Error sending email: ' + error.message);
+        }
+        res.send('Email sent: ' + info.response);
+    });
 });
 
-// Start server
 app.listen(port, () => {
-    console.log(`🚀 Server running at http://localhost:${port}/`);
+    console.log(`Server running at http://localhost:${port}/`);
 });
