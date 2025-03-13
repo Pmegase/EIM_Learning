@@ -124,6 +124,10 @@ margin-top: 40px;
   background: white;
   color: black;
   padding: 20px;
+  max-width: 100%;
+  /* Ensures it doesn't overflow */
+  word-wrap: break-word;
+  /* Prevents text overflow */
 }
 
 .textCourse{
@@ -415,4 +419,23 @@ margin-top: 40px;
     }
   }
 
+    @media (max-width: 768px) {
   
+      /* Tablet and smaller devices */
+      .textBg {
+        padding: 15px;
+        font-size: 14px;
+        /* Slightly reduce font size */
+      }
+    }
+  
+    @media (max-width: 480px) {
+  
+      /* Mobile phones */
+      .textBg {
+        padding: 10px;
+        font-size: 12px;
+        text-align: center;
+        /* Center text for better readability */
+      }
+    }
