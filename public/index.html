@@ -544,7 +544,7 @@
             message: form.elements['message'].value
           };
 
-          fetch('/api/send-email', { // Use `/api/send-email` if using Vercel
+          fetch('/send-email', { // Use `/api/send-email` if using Vercel
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
