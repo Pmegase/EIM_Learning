@@ -1,3 +1,5 @@
+
+
 const express = require('express');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
@@ -33,4 +35,7 @@ app.post('/send-email', (req, res) => {
     });
 });
 
-module.exports = app;
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}/`);
+});
+
