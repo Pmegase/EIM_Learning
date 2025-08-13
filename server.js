@@ -1,17 +1,25 @@
-
-
 const express = require('express');
+const cors = require('cors'); 
+const path = require('path');
 const nodemailer = require('nodemailer');
-require('dotenv').config();
+require('dotenv').config(); 
 const multer = require('multer');
 const upload = multer();
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3001;
 
-app.use(express.static('public'));
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, 'dist')));
 
-app.post('/send-email', (req, res) => {
+
+
+
+
+app.post('/send-email',(req, res) => {
     let transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -20,12 +28,14 @@ app.post('/send-email', (req, res) => {
         }
     });
 
-    const mailOptions = {
-        from: process.env.EMAIL_USER, // sender address
-        to: 'info@eimconsultld.com', // list of receivers
-        subject: req.body.subject, // Subject line
-        text: `Message from: ${req.body.first_name} ${req.body.last_name} (${req.body.email})\n\n${req.body.message}` // plain text body
-    };
+    // In your app.post('/send-email', ...) route
+	const mailOptions = {
+		from: process.env.EMAIL_USER,
+		to: 'info@eimconsultld.com',
+		subject: req.body.subject,
+		// Change these lines to use camelCase
+		text: `Message from: ${req.body.firstName} ${req.body.lastName} (${req.body.email})\n\n${req.body.message}`
+	};
 
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
@@ -35,7 +45,11 @@ app.post('/send-email', (req, res) => {
     });
 });
 
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}/`);
+// IMPORTANT: Add this catch-all route for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}/`);
+});
