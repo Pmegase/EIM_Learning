@@ -11,7 +11,7 @@ import FAQ from "@/pages/FAQ";
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
+      <Route path="*" element={<Index />} />
       <Route path="/login" element={<AdminLogin />} />
       <Route path="/admin/reset-password" element={<AdminResetPassword />} />
       <Route path="/faq" element={<FAQ />} />

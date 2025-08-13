@@ -1,5 +1,5 @@
 import axios from "axios";
-const baseUrl = process.env.BACKEND_URL + "/send-email";
+const baseUrl =  "https://eim-learning-backend.onrender.com/send-email";
 
 
     const sendEmail = async (formData) => {
