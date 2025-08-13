@@ -1,5 +1,5 @@
 import axios from "axios";
-const baseUrl =  "https://eim-learning-backend.onrender.com/send-email";
+const baseUrl =  "https://eim-learning-backend.vercel.app/send-email";
 
 
     const sendEmail = async (formData) => {

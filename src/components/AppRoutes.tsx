@@ -10,12 +10,12 @@ import FAQ from "@/pages/FAQ";
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="*" element={<Index />} />
+     <Routes>
+      {/* Define specific routes first */}
+      <Route path="/" element={<Index />} /> {/* Add explicit home route */}
       <Route path="/login" element={<AdminLogin />} />
       <Route path="/admin/reset-password" element={<AdminResetPassword />} />
       <Route path="/faq" element={<FAQ />} />
-      {/* Protected route for admin dashboard */}
       <Route
         path="/admin/dashboard"
         element={
@@ -24,6 +24,8 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      
+      {/* 404 catch-all route MUST be last */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
