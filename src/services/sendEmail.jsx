@@ -1,5 +1,5 @@
 import axios from "axios";
-const baseUrl = "/send-email";
+const baseUrl = process.env.BACKEND_URL + "/send-email";
 
 
     const sendEmail = async (formData) => {
