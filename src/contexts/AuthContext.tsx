@@ -1,115 +1,110 @@
-// src/contexts/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/services/apiClient';
 import { API_ENDPOINTS } from '@/config/api';
 
-interface User {
-  id: number;
+type AuthUser = {
+  id: string | number;
   email: string;
-  name: string;
-  role: string;
-}
+  name?: string;
+  role?: 'admin' | 'user' | string;
+};
 
-interface AuthContextType {
+type AuthContextType = {
+  user: AuthUser | null;
   isAuthenticated: boolean;
-  user: User | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   adminSignup: (name: string, email: string, password: string, adminCode: string) => Promise<void>;
   logout: () => void;
-  loading: boolean;
-}
+  refreshMe: () => Promise<void>;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const location = useLocation();
 
-  // Initialize auth state
+  // Load existing session (if any) — no redirects here
   useEffect(() => {
-    checkAuthStatus();
+    const init = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          setUser(null);
+          return;
+        }
+        // will include Authorization via axios interceptor
+        const data = await apiClient.get<{ user: AuthUser }>(API_ENDPOINTS.AUTH.ME);
+        setUser(data.user);
+      } catch {
+        // invalid/expired token
+        localStorage.removeItem('authToken');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void init();
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        const data = await apiClient.get(API_ENDPOINTS.AUTH.ME);
-        setUser(data.user);
-        setIsAuthenticated(true);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.removeItem('authToken');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const login = async (email: string, password: string) => {
-    const data = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, { email, password });
-    localStorage.setItem('authToken', data.token);
-    setUser(data.user);
-    setIsAuthenticated(true);
-    navigate('/admin/dashboard', { replace: true });
+    const res = await apiClient.post<{ token: string; user: AuthUser }>(
+      API_ENDPOINTS.AUTH.LOGIN,
+      { email, password }
+    );
+    localStorage.setItem('authToken', res.token);
+    setUser(res.user);
   };
 
   const signup = async (name: string, email: string, password: string) => {
-    const data = await apiClient.post(API_ENDPOINTS.AUTH.SIGNUP, { name, email, password });
-    localStorage.setItem('authToken', data.token);
-    setUser(data.user);
-    setIsAuthenticated(true);
-    navigate('/', { replace: true });
+    const res = await apiClient.post<{ token: string; user: AuthUser }>(
+      API_ENDPOINTS.AUTH.SIGNUP,
+      { name, email, password }
+    );
+    localStorage.setItem('authToken', res.token);
+    setUser(res.user);
   };
 
   const adminSignup = async (name: string, email: string, password: string, adminCode: string) => {
-    const data = await apiClient.post(API_ENDPOINTS.AUTH.ADMIN_SIGNUP, {
-      name, email, password, adminCode
-    });
-    localStorage.setItem('authToken', data.token);
+    const res = await apiClient.post<{ token: string; user: AuthUser }>(
+      API_ENDPOINTS.AUTH.ADMIN_SIGNUP,
+      { name, email, password, adminCode }
+    );
+    localStorage.setItem('authToken', res.token);
+    setUser(res.user);
+  };
+
+  const refreshMe = async () => {
+    const data = await apiClient.get<{ user: AuthUser }>(API_ENDPOINTS.AUTH.ME);
     setUser(data.user);
-    setIsAuthenticated(true);
-    navigate('/admin/dashboard', { replace: true });
   };
 
   const logout = () => {
     localStorage.removeItem('authToken');
     setUser(null);
-    setIsAuthenticated(false);
-    navigate('/', { replace: true });
   };
 
-  // Handle redirects after auth state is initialized
-  useEffect(() => {
-    if (!loading && !isAuthenticated && location.pathname.startsWith('/admin')) {
-      navigate('/login', { replace: true });
-    }
-  }, [isAuthenticated, loading, navigate, location.pathname]);
-
-  return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
+  const value = useMemo<AuthContextType>(
+    () => ({
       user,
+      isAuthenticated: !!user,
+      loading,
       login,
       signup,
       adminSignup,
       logout,
-      loading
-    }}>
-      {children}
-    </AuthContext.Provider>
+      refreshMe,
+    }),
+    [user, loading]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
 };
