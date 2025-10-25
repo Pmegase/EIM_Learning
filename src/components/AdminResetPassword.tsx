@@ -55,11 +55,19 @@ const AdminResetPassword: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/admin/reset-password`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       });
-      if (error) throw error;
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send reset link');
+      }
+
       toast({
         title: "Reset link sent",
         description: "If the email exists, a reset link has been sent.",

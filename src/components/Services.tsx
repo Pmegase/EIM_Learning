@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GraduationCap, Users, Briefcase, Book } from 'lucide-react';
 import { useContent } from '@/contexts/ContentContext';
@@ -10,9 +9,10 @@ const iconMap = {
   'book': Book,
 };
 
-const Services = () => {
+const Services: React.FC = () => {
   const { content } = useContent();
-  // Define the additional links
+
+  // Define the additional links (unchanged)
   const additionalLinks = [
     {
       text: 'Read more',
@@ -31,19 +31,25 @@ const Services = () => {
     }
   ];
 
+  const services = content?.services ?? []; // ✅ guard to prevent .map on undefined
+
   return (
     <section id="services" className="py-20 bg-white">
       <div className="container mx-auto px-4">
         <h2 className="text-4xl font-bold text-center mb-12 text-gray-800 border-b-4 border-green-500 pb-4">
           Services
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {content.services.map((service) => {
-            const IconComponent = iconMap[service.icon as keyof typeof iconMap] || Book;
-            
+          {services.map((service) => {
+            const IconComponent =
+              iconMap[service.icon as keyof typeof iconMap] || Book;
+
             return (
-              <div key={service.id} className="bg-gray-50 p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div
+                key={service.id}
+                className="bg-gray-50 p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300"
+              >
                 <div className="flex items-start mb-4">
                   <div className="bg-green-100 p-3 rounded-lg mr-4">
                     <IconComponent className="h-8 w-8 text-green-600" />
@@ -56,8 +62,8 @@ const Services = () => {
                   {service.description}
                 </p>
                 {service.link && (
-                  <a 
-                    href={service.link} 
+                  <a
+                    href={service.link}
                     className="inline-block mt-4 text-green-600 hover:text-green-800 font-medium"
                   >
                     Read more →
@@ -68,15 +74,12 @@ const Services = () => {
           })}
         </div>
 
-        <div className="mt-6"> {/* Reduced top margin */}
+        <div className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {additionalLinks.map((link, index) => (
               <div
                 key={index}
-                className={`
-                  ${index === 3 ? 'lg:hidden' : ''} 
-                  flex justify-center items-center
-                `}
+                className={`${index === 3 ? 'lg:hidden' : ''} flex justify-center items-center`}
               >
                 <a
                   href={link.href}
@@ -89,7 +92,6 @@ const Services = () => {
                 </a>
               </div>
             ))}
-            {/* Empty div for the 4th column on large screens */}
             <div className="hidden lg:block"></div>
           </div>
         </div>

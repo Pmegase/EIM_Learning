@@ -1,4 +1,4 @@
-
+// src/components/AdminDashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,99 +9,140 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { LogOut, Save, Plus, Trash2, Upload } from 'lucide-react';
 import { useContent } from '@/contexts/ContentContext';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/services/apiClient';
+import { API_ENDPOINTS } from '@/config/api';
 
-const AdminDashboard = () => {
+// Use backend origin when rendering images stored as /lovable-uploads/...
+const BACKEND_PUBLIC_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const toPublicUrl = (u: string) =>
+  !u ? u : /^https?:\/\//i.test(u) ? u : `${BACKEND_PUBLIC_URL}${u.startsWith('/') ? '' : '/'}${u}`;
+
+const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { content, updateContent } = useContent();
-  const [loading, setLoading] = useState(false);
-  
-  // For now, we'll work with the context data directly
-  // Later we can integrate with Supabase database
-  const [localContent, setLocalContent] = useState(content);
-  const { logout, isAuthenticated } = useAuth(); // Get auth functions from context
+  const { logout, isAuthenticated } = useAuth();
 
-  
-  // Handle authentication state changes
+  const [loading, setLoading] = useState(false);
+  const [localContent, setLocalContent] = useState(content);
+
+  // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
+  // Keep editable copy in sync with context content
   useEffect(() => {
     setLocalContent(content);
   }, [content]);
 
   const handleLogout = () => {
-    logout(); // Use context logout function
+    logout();
   };
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      updateContent(localContent);
+      // Clean out any legacy blob:/data: entries before persisting
+      const sanitized = {
+        ...localContent,
+        carouselImages: (localContent.carouselImages ?? []).filter(
+          (u) => typeof u === 'string' && !u.startsWith('blob:') && !u.startsWith('data:')
+        ),
+      };
+      await updateContent(sanitized as any);
+
       toast({
-        title: "Changes saved",
-        description: "All content has been updated successfully!",
+        title: 'Changes saved',
+        description: 'All content has been updated successfully!',
       });
     } catch (error) {
       toast({
-        title: "Error saving",
-        description: "Failed to save changes. Please try again.",
-        variant: "destructive",
+        title: 'Error saving',
+        description: 'Failed to save changes. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Immediate persist after upload so Gallery + Admin update without refresh
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget; // capture before await
+    const file = input.files?.[0];
     if (!file) return;
 
-    // For now, we'll create a local URL
-    // Later we'll integrate with Supabase storage
-    const imageUrl = URL.createObjectURL(file);
-    
-    setLocalContent(prev => ({
-      ...prev,
-      carouselImages: [...prev.carouselImages, imageUrl]
-    }));
+    try {
+      const formData = new FormData();
+      // Field must be named 'image' to match multer.single('image')
+      formData.append('image', file);
 
-    toast({
-      title: "Image uploaded",
-      description: "Image has been added to the gallery",
-    });
+      // POST /api/content/upload -> { imageUrl: '/lovable-uploads/<file>' }
+      const res = await apiClient.upload<{ imageUrl: string }>(
+        API_ENDPOINTS.CONTENT.UPLOAD,
+        formData
+      );
+
+      // 1) Optimistic local update so the admin grid shows immediately
+      const nextImages = [...(localContent.carouselImages ?? []), res.imageUrl];
+      setLocalContent((prev: any) => ({ ...prev, carouselImages: nextImages }));
+
+      // 2) Persist right away so ContentContext updates → public Gallery updates too
+      await updateContent({ carouselImages: nextImages } as any);
+
+      toast({
+        title: 'Image uploaded',
+        description: 'Image has been added to the gallery',
+      });
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'Could not upload image. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      // allow re-selecting the same file
+      try {
+        input.value = '';
+      } catch { }
+    }
   };
 
   const addHeroText = () => {
-    setLocalContent(prev => ({
+    setLocalContent((prev: any) => ({
       ...prev,
-      heroTexts: [...prev.heroTexts, 'New hero text']
+      heroTexts: [...(prev.heroTexts ?? []), 'New hero text'],
     }));
   };
 
   const updateHeroText = (index: number, value: string) => {
-    setLocalContent(prev => ({
+    setLocalContent((prev: any) => ({
       ...prev,
-      heroTexts: prev.heroTexts.map((text, i) => i === index ? value : text)
+      heroTexts: (prev.heroTexts ?? []).map((text: string, i: number) =>
+        i === index ? value : text
+      ),
     }));
   };
 
   const removeHeroText = (index: number) => {
-    setLocalContent(prev => ({
+    setLocalContent((prev: any) => ({
       ...prev,
-      heroTexts: prev.heroTexts.filter((_, i) => i !== index)
+      heroTexts: (prev.heroTexts ?? []).filter((_: string, i: number) => i !== index),
     }));
   };
 
   const removeCarouselImage = (index: number) => {
-    setLocalContent(prev => ({
-      ...prev,
-      carouselImages: prev.carouselImages.filter((_, i) => i !== index)
-    }));
+    const nextImages = (localContent.carouselImages ?? []).filter((_: string, i: number) => i !== index);
+    setLocalContent((prev: any) => ({ ...prev, carouselImages: nextImages }));
+    // Optional: persist removal immediately as well so Gallery updates instantly
+    updateContent({ carouselImages: nextImages } as any).catch(() => {
+      // non-blocking; the Save button still exists as a fallback
+    });
   };
 
   return (
@@ -110,16 +151,16 @@ const AdminDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <img 
-                src="/lovable-uploads/af7506d4-417a-4b90-95ab-b5e5d4d80b6a.png" 
-                alt="EIM Consultancy" 
+              <img
+                src="/lovable-uploads/af7506d4-417a-4b90-95ab-b5e5d4d80b6a.png"
+                alt="EIM Consultancy"
                 className="h-12 w-auto mr-4"
               />
               <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 className="bg-green-600 hover:bg-green-700"
                 disabled={loading}
               >
@@ -148,24 +189,21 @@ const AdminDashboard = () => {
             <TabsTrigger value="contact">Contact Info</TabsTrigger>
           </TabsList>
 
+          {/* HERO */}
           <TabsContent value="hero">
             <Card>
               <CardHeader>
                 <CardTitle>Hero Section Texts</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {localContent.heroTexts.map((text, index) => (
+                {(localContent.heroTexts ?? []).map((text: string, index: number) => (
                   <div key={index} className="flex gap-2">
                     <Input
                       value={text}
                       onChange={(e) => updateHeroText(index, e.target.value)}
                       className="flex-1"
                     />
-                    <Button 
-                      onClick={() => removeHeroText(index)}
-                      variant="outline"
-                      size="icon"
-                    >
+                    <Button onClick={() => removeHeroText(index)} variant="outline" size="icon">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -178,6 +216,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
+          {/* ABOUT */}
           <TabsContent value="about">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
@@ -186,8 +225,10 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    value={localContent.vision}
-                    onChange={(e) => setLocalContent(prev => ({ ...prev, vision: e.target.value }))}
+                    value={localContent.vision ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({ ...prev, vision: e.target.value }))
+                    }
                     rows={6}
                   />
                 </CardContent>
@@ -199,8 +240,10 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    value={localContent.mission}
-                    onChange={(e) => setLocalContent(prev => ({ ...prev, mission: e.target.value }))}
+                    value={localContent.mission ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({ ...prev, mission: e.target.value }))
+                    }
                     rows={6}
                   />
                 </CardContent>
@@ -212,8 +255,10 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    value={localContent.aboutUs}
-                    onChange={(e) => setLocalContent(prev => ({ ...prev, aboutUs: e.target.value }))}
+                    value={localContent.aboutUs ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({ ...prev, aboutUs: e.target.value }))
+                    }
                     rows={6}
                   />
                 </CardContent>
@@ -221,6 +266,16 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
+          {/* SERVICES (kept minimal to preserve your layout) */}
+          <TabsContent value="services">
+            <Card>
+              <CardHeader>
+                <CardTitle>Services</CardTitle>
+              </CardHeader>
+            </Card>
+          </TabsContent>
+
+          {/* GALLERY */}
           <TabsContent value="gallery">
             <Card>
               <CardHeader>
@@ -244,11 +299,12 @@ const AdminDashboard = () => {
                     </Button>
                   </label>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {localContent.carouselImages.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img 
-                        src={image} 
+                  {(localContent.carouselImages ?? []).map((image: string, index: number) => (
+                    <div key={`${image}-${index}`} className="relative">
+                      <img
+                        src={toPublicUrl(image)}
                         alt={`Gallery ${index + 1}`}
                         className="w-full h-32 object-cover rounded-lg"
                       />
@@ -267,6 +323,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
+          {/* CONTACT */}
           <TabsContent value="contact">
             <Card>
               <CardHeader>
@@ -276,41 +333,49 @@ const AdminDashboard = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Address</label>
                   <Input
-                    value={localContent.contactInfo.address}
-                    onChange={(e) => setLocalContent(prev => ({
-                      ...prev,
-                      contactInfo: { ...prev.contactInfo, address: e.target.value }
-                    }))}
+                    value={localContent.contactInfo?.address ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({
+                        ...prev,
+                        contactInfo: { ...(prev.contactInfo ?? {}), address: e.target.value },
+                      }))
+                    }
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Email</label>
                   <Input
-                    value={localContent.contactInfo.email}
-                    onChange={(e) => setLocalContent(prev => ({
-                      ...prev,
-                      contactInfo: { ...prev.contactInfo, email: e.target.value }
-                    }))}
+                    value={localContent.contactInfo?.email ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({
+                        ...prev,
+                        contactInfo: { ...(prev.contactInfo ?? {}), email: e.target.value },
+                      }))
+                    }
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Instagram</label>
                   <Input
-                    value={localContent.contactInfo.instagram}
-                    onChange={(e) => setLocalContent(prev => ({
-                      ...prev,
-                      contactInfo: { ...prev.contactInfo, instagram: e.target.value }
-                    }))}
+                    value={localContent.contactInfo?.instagram ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({
+                        ...prev,
+                        contactInfo: { ...(prev.contactInfo ?? {}), instagram: e.target.value },
+                      }))
+                    }
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">Facebook</label>
                   <Input
-                    value={localContent.contactInfo.facebook}
-                    onChange={(e) => setLocalContent(prev => ({
-                      ...prev,
-                      contactInfo: { ...prev.contactInfo, facebook: e.target.value }
-                    }))}
+                    value={localContent.contactInfo?.facebook ?? ''}
+                    onChange={(e) =>
+                      setLocalContent((prev: any) => ({
+                        ...prev,
+                        contactInfo: { ...(prev.contactInfo ?? {}), facebook: e.target.value },
+                      }))
+                    }
                   />
                 </div>
               </CardContent>

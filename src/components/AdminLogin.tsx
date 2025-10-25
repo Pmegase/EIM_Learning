@@ -1,37 +1,29 @@
 // src/components/AdminLogin.tsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-const ADMIN_CREDENTIALS = {
-  email: 'admin@eim.com',
-  password: 'admin123'
-};
-
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth(); // Get login function from AuthContext
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      if (
-        credentials.email === ADMIN_CREDENTIALS.email && 
-        credentials.password === ADMIN_CREDENTIALS.password
-      ) {
-        login(); // Use context login function
-      } else {
-        throw new Error('Invalid email or password');
-      }
+      await login(credentials.email, credentials.password);
+      toast({
+        title: "Login successful",
+        description: "Welcome to the admin dashboard!",
+      });
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -47,9 +39,9 @@ const AdminLogin = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img 
-            src="/lovable-uploads/af7506d4-417a-4b90-95ab-b5e5d4d80b6a.png" 
-            alt="EIM Consultancy" 
+          <img
+            src="/lovable-uploads/af7506d4-417a-4b90-95ab-b5e5d4d80b6a.png"
+            alt="EIM Consultancy"
             className="h-24 w-auto mx-auto mb-4"
           />
           <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
@@ -74,21 +66,35 @@ const AdminLogin = () => {
                 required
               />
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-green-600 hover:bg-green-700"
               disabled={loading}
             >
               {loading ? 'Signing in...' : 'Login'}
             </Button>
           </form>
-          <div className="mt-4 text-center">
-            <button 
+
+          <div className="mt-6 space-y-3 text-center">
+            <p className="text-sm text-gray-600">
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-green-600 hover:text-green-800 font-medium">
+                Sign up as user
+              </Link>
+            </p>
+            <p className="text-sm text-gray-600">
+              Need an admin account?{' '}
+              <Link to="/admin-signup" className="text-green-600 hover:text-green-800 font-medium">
+                Admin Sign Up
+              </Link>
+            </p>
+            <Button
               onClick={() => navigate('/')}
-              className="text-green-600 hover:text-green-800 text-sm"
+              variant="ghost"
+              className="w-full text-sm"
             >
               ← Back to Website
-            </button>
+            </Button>
           </div>
         </CardContent>
       </Card>

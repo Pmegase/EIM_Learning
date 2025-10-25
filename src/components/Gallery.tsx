@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useContent } from '@/contexts/ContentContext';
 
+const BACKEND_PUBLIC_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4001').replace(/\/$/, '');
+const toPublicUrl = (u: string) => (!u ? u : /^https?:\/\//i.test(u) ? u : `${BACKEND_PUBLIC_URL}${u.startsWith('/') ? '' : '/'}${u}`);
+
 const Gallery = () => {
   const { content } = useContent();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -48,11 +51,8 @@ const Gallery = () => {
                 className={`absolute inset-0 transition-opacity duration-1000 ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'
                   }`}
               >
-                <img
-                  src={image}
-                  alt={`Gallery image ${index + 1}`}
-                  className="w-full h-full object-contain"  // Changed from object-cover
-                />
+                <img src={toPublicUrl(image)} alt={`Gallery image ${index + 1}`} className="w-full h-full object-contain" />
+
               </div>
             ))}
           </div>
