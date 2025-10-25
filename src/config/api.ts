@@ -1,5 +1,5 @@
 // src/config/api.ts (DEV)
-export const API_BASE_URL = ''; // important: empty string
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://eim-learning-backend.onrender.com';
 export const API_ENDPOINTS = {
     CONTENT: { BASE: '/api/content', UPLOAD: '/api/content/upload' },
     AUTH: {
