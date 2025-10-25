@@ -30,8 +30,8 @@ const AppRoutes = () => {
       <Route path="/faq" element={<FAQ />} />
       <Route path="/login" element={<AdminLogin />} />
       <Route path="/signup" element={<SignUp />} />
-      <Route path="/admin-signup" element={<AdminSignUp />} />
-      <Route path="/admin/reset-password" element={<AdminResetPassword />} />
+      <Route path="/adminsignup" element={<AdminSignUp />} />
+      <Route path="/admin/resetpassword" element={<AdminResetPassword />} />
 
       {/* Protected Admin Routes */}
       <Route
