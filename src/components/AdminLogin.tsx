@@ -1,34 +1,43 @@
 // src/components/AdminLogin.tsx
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-const AdminLogin = () => {
-  const [credentials, setCredentials] = useState({ email: '', password: '' });
+const AdminLogin: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated, user } = useAuth();
+
+  // If already logged in and you hit /login, send admins to dashboard
+  useEffect(() => {
+    if (isAuthenticated && user?.role === 'admin') {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      await login(credentials.email, credentials.password);
+      await login(email, password);
+      toast({ title: 'Login successful' });
+
+      // Go where the user originally wanted, else to admin dashboard
+      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
+      navigate(from, { replace: true });
+    } catch (err: any) {
       toast({
-        title: "Login successful",
-        description: "Welcome to the admin dashboard!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
+        title: 'Login failed',
+        description: err?.message || 'Please check your credentials.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -48,53 +57,43 @@ const AdminLogin = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Input
-                type="email"
-                placeholder="Admin Email"
-                value={credentials.email}
-                onChange={(e) => setCredentials(prev => ({ ...prev, email: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <Input
-                type="password"
-                placeholder="Password"
-                value={credentials.password}
-                onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
-                required
-              />
-            </div>
+            <Input
+              type="email"
+              placeholder="Admin Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
             <Button
               type="submit"
               className="w-full bg-green-600 hover:bg-green-700"
               disabled={loading}
             >
-              {loading ? 'Signing in...' : 'Login'}
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
 
           <div className="mt-6 space-y-3 text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/signup" className="text-green-600 hover:text-green-800 font-medium">
-                Sign up as user
+              Forgot password?{' '}
+              <Link to="/admin/reset-password" className="text-green-600 hover:text-green-800 font-medium">
+                Reset here
               </Link>
             </p>
             <p className="text-sm text-gray-600">
-              Need an admin account?{' '}
+              Don’t have an admin account?{' '}
               <Link to="/admin-signup" className="text-green-600 hover:text-green-800 font-medium">
                 Admin Sign Up
               </Link>
             </p>
-            <Button
-              onClick={() => navigate('/')}
-              variant="ghost"
-              className="w-full text-sm"
-            >
-              ← Back to Website
-            </Button>
           </div>
         </CardContent>
       </Card>

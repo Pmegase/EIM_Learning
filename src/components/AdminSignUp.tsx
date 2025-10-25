@@ -1,5 +1,5 @@
 // src/components/AdminSignUp.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,74 +7,79 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
-const AdminSignUp = () => {
+const AdminSignUp: React.FC = () => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
         confirmPassword: '',
-        adminCode: '' // Required admin code
+        adminCode: '',
     });
     const [loading, setLoading] = useState(false);
+
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { adminSignup } = useAuth();
+    const { adminSignup, isAuthenticated, user } = useAuth();
+
+    // If an already-authenticated admin hits this page, take them to dashboard
+    useEffect(() => {
+        if (isAuthenticated && user?.role === 'admin') {
+            navigate('/admin/dashboard', { replace: true });
+        }
+    }, [isAuthenticated, user, navigate]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.currentTarget;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation
+        // Client validations
         if (formData.password !== formData.confirmPassword) {
             toast({
                 title: "Passwords don't match",
-                description: "Please make sure your passwords match.",
-                variant: "destructive",
+                description: 'Please make sure your passwords match.',
+                variant: 'destructive',
             });
             return;
         }
-
         if (formData.password.length < 6) {
             toast({
-                title: "Password too short",
-                description: "Password must be at least 6 characters long.",
-                variant: "destructive",
+                title: 'Password too short',
+                description: 'Password must be at least 6 characters long.',
+                variant: 'destructive',
             });
             return;
         }
-
         if (!formData.adminCode.trim()) {
             toast({
-                title: "Admin code required",
-                description: "Please provide the admin access code.",
-                variant: "destructive",
+                title: 'Admin code required',
+                description: 'Please provide the admin access code.',
+                variant: 'destructive',
             });
             return;
         }
 
         setLoading(true);
-
         try {
             await adminSignup(formData.name, formData.email, formData.password, formData.adminCode);
             toast({
-                title: "Admin Account Created!",
-                description: "Welcome to the admin dashboard!",
+                title: 'Admin Account Created!',
+                description: 'Welcome to the admin dashboard!',
             });
+            // Navigate to dashboard on success
+            navigate('/admin/dashboard', { replace: true });
         } catch (error: any) {
             toast({
-                title: "Admin signup failed",
-                description: error.message,
-                variant: "destructive",
+                title: 'Admin signup failed',
+                description: error?.message || 'Please try again.',
+                variant: 'destructive',
             });
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({
-            ...prev,
-            [e.target.name]: e.target.value
-        }));
     };
 
     return (
@@ -169,11 +174,7 @@ const AdminSignUp = () => {
                                 User Sign Up
                             </Link>
                         </p>
-                        <Button
-                            onClick={() => navigate('/')}
-                            variant="ghost"
-                            className="w-full text-sm"
-                        >
+                        <Button onClick={() => navigate('/')} variant="ghost" className="w-full text-sm">
                             ← Back to Website
                         </Button>
                     </div>
