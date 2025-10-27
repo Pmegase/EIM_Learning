@@ -132,12 +132,12 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const [contentData, servicesResp] = await Promise.all([
         apiClient.get<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE),
-        apiClient.get<{ services: Service[] }>(API_ENDPOINTS.SERVICES.BASE), // ⬅️ note the shape
+        apiClient.get<Service[]>(API_ENDPOINTS.SERVICES.BASE),
       ]);
 
       setContent(prev => {
         const merged = mergeContent(prev, contentData ?? {});
-        merged.services = normalizeServices(servicesResp?.services ?? []);
+        merged.services = normalizeServices(servicesResp ?? []);
         return merged;
       });
     } catch (err) {
