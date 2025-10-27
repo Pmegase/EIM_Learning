@@ -1,3 +1,4 @@
+// src/contexts/ContentContext.tsx
 import React, {
   createContext,
   useContext,
@@ -12,11 +13,13 @@ import { API_ENDPOINTS } from '@/config/api';
 // ---- Types --------------------------------------------------------------
 
 export interface Service {
-  id: string;
+  id?: number;                 // 👈 may be undefined for new rows
   title: string;
   description: string;
-  icon: string;          // name used to choose an icon in the UI
+  icon: string;
   link?: string;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
 export interface TeamMember {
@@ -54,7 +57,7 @@ interface ContentContextType {
   refetch: () => Promise<void>;
 }
 
-// ---- Defaults (used until API loads, and as fallback when API omits keys) --
+// ---- Defaults -----------------------------------------------------------
 
 const defaultContent: ContentData = {
   heroTexts: [
@@ -62,36 +65,7 @@ const defaultContent: ContentData = {
     'Get connected with a Global Mentor',
     'Advance your professional skill set and learn new things.',
   ],
-  services: [
-    {
-      id: '1',
-      title: 'Student internship program',
-      description:
-        'We provide students with out-of-classroom trainings, mentorship and direct industry experience.',
-      icon: 'graduation-cap',
-    },
-    {
-      id: '2',
-      title: 'Mentorship Program',
-      description:
-        'Our interns are paired with mentors from across the globe who guide them to ensure organizational growth.',
-      icon: 'users',
-    },
-    {
-      id: '3',
-      title: 'Professional trainings',
-      description:
-        'High-end trainings for employees to keep them updated with growing industry trends.',
-      icon: 'briefcase',
-    },
-    {
-      id: '4',
-      title: 'Courses',
-      description:
-        'Personal Branding, Public Speaking, CV writing, Opportunity identification, Minute Writing, Basic Excel Skills.',
-      icon: 'book',
-    },
-  ],
+  services: [], // will be filled from /api/services
   vision:
     "To be the first-choice Student Consultancy in Africa that bridges the gap between employers and students, and provides out-of-classroom employability skills to reduce unemployment.",
   mission:
@@ -121,11 +95,8 @@ const defaultContent: ContentData = {
   },
 };
 
-// ---- Context ------------------------------------------------------------
+// ---- Helpers ------------------------------------------------------------
 
-const ContentContext = createContext<ContentContextType | undefined>(undefined);
-
-// Utility that merges API data into defaults without losing arrays/objects
 function mergeContent(prev: ContentData, incoming: Partial<ContentData>): ContentData {
   return {
     ...prev,
@@ -144,16 +115,33 @@ function mergeContent(prev: ContentData, incoming: Partial<ContentData>): Conten
   };
 }
 
+const normalizeServices = (rows: Service[] = []): Service[] =>
+  rows
+    .filter((s) => s.isActive !== false) // default active if undefined
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+// ---- Context ------------------------------------------------------------
+
+const ContentContext = createContext<ContentContextType | undefined>(undefined);
+
 export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [content, setContent] = useState<ContentData>(defaultContent);
   const [loading, setLoading] = useState<boolean>(true);
 
   const refetch = async () => {
     try {
-      const data = await apiClient.get<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE);
-      setContent((prev) => mergeContent(prev, data ?? {}));
+      // ⬇️ fetch content AND services
+      const [contentData, servicesData] = await Promise.all([
+        apiClient.get<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE),
+        apiClient.get<Service[]>(API_ENDPOINTS.SERVICES.BASE),
+      ]);
+
+      const merged = mergeContent(content, contentData ?? {});
+      merged.services = normalizeServices(servicesData ?? []);
+      setContent(merged);
     } catch (err) {
-      console.error('Failed to fetch content:', err);
+      console.error('Failed to fetch content/services:', err);
+      // still end loading so UI shows defaults
     } finally {
       setLoading(false);
     }
@@ -166,8 +154,9 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const updateContent = async (patch: Partial<ContentData>) => {
     const server = await apiClient.put<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE, patch);
-    setContent((prev) => mergeContent(prev, server ?? patch));
-    return mergeContent(content, server ?? patch);
+    const merged = mergeContent(content, server ?? patch);
+    setContent(merged);
+    return merged;
   };
 
   const uploadImage = async (file: File): Promise<string> => {

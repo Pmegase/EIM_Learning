@@ -12,26 +12,17 @@ const iconMap = {
 const Services: React.FC = () => {
   const { content } = useContent();
 
-  // Define the additional links (unchanged)
   const additionalLinks = [
-    {
-      text: 'Read more',
-      href: '../documents/STUDENT INTERNSHIP PROGRAM.pptx',
-      download: true
-    },
-    {
-      text: 'Read more',
-      href: '../documents/MENTORSHIP PROGRAM.pptx',
-      download: true
-    },
+    { text: 'Read more', href: '../documents/STUDENT INTERNSHIP PROGRAM.pptx', download: true },
+    { text: 'Read more', href: '../documents/MENTORSHIP PROGRAM.pptx', download: true },
     {
       text: 'Become a mentor',
       href: 'https://docs.google.com/forms/d/e/1FAIpQLScvb3Led1Qqw658OmfO8taHReaNaZ6budAMc587Zec77Fn_WQ/viewform',
-      download: false
-    }
+      download: false,
+    },
   ];
 
-  const services = content?.services ?? []; // ✅ guard to prevent .map on undefined
+  const services = content?.services ?? [];
 
   return (
     <section id="services" className="py-20 bg-white">
@@ -41,13 +32,13 @@ const Services: React.FC = () => {
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {services.map((service) => {
+          {services.map((service, idx) => {
             const IconComponent =
               iconMap[service.icon as keyof typeof iconMap] || Book;
 
             return (
               <div
-                key={service.id}
+                key={service.id ?? idx}
                 className="bg-gray-50 p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300"
               >
                 <div className="flex items-start mb-4">
