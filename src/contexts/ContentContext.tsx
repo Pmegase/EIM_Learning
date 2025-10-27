@@ -130,22 +130,23 @@ export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const refetch = async () => {
     try {
-      // ⬇️ fetch content AND services
-      const [contentData, servicesData] = await Promise.all([
+      const [contentData, servicesResp] = await Promise.all([
         apiClient.get<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE),
-        apiClient.get<Service[]>(API_ENDPOINTS.SERVICES.BASE),
+        apiClient.get<{ services: Service[] }>(API_ENDPOINTS.SERVICES.BASE), // ⬅️ note the shape
       ]);
 
-      const merged = mergeContent(content, contentData ?? {});
-      merged.services = normalizeServices(servicesData ?? []);
-      setContent(merged);
+      setContent(prev => {
+        const merged = mergeContent(prev, contentData ?? {});
+        merged.services = normalizeServices(servicesResp?.services ?? []);
+        return merged;
+      });
     } catch (err) {
       console.error('Failed to fetch content/services:', err);
-      // still end loading so UI shows defaults
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     refetch();

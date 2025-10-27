@@ -110,13 +110,30 @@ const AdminDashboard: React.FC = () => {
     });
   };
 
-  const removeService = (index: number) => {
+  // replace your current removeService with this:
+  const removeService = async (index: number) => {
+    const svc = (localContent.services ?? [])[index];
+    // Optimistic UI
     setLocalContent(prev => {
       const list = [...(prev.services ?? [])];
       list.splice(index, 1);
       return { ...prev, services: list.map((s, i) => ({ ...s, sortOrder: i })) };
     });
+
+    try {
+      if (typeof svc?.id === 'number' && Number.isFinite(svc.id)) {
+        await apiClient.delete(`/api/services/${svc.id}`);
+        await refetch(); // make sure context pulls fresh list from server
+      }
+    } catch (e: any) {
+      // optional: roll back UI here if you want
+      console.error('delete service failed', e);
+      toast({ title: 'Delete failed', description: e?.message || 'Try again.', variant: 'destructive' });
+      // quick re-fetch to resync
+      await refetch();
+    }
   };
+
 
   const moveService = (index: number, dir: -1 | 1) => {
     setLocalContent(prev => {

@@ -63,29 +63,7 @@ const Services: React.FC = () => {
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {additionalLinks.map((link, index) => (
-              <div
-                key={index}
-                className={`${index === 3 ? 'lg:hidden' : ''} flex justify-center items-center`}
-              >
-                <a
-                  href={link.href}
-                  download={link.download}
-                  target={link.download ? '_self' : '_blank'}
-                  rel="noopener noreferrer"
-                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-300 w-full text-center"
-                >
-                  {link.text}
-                </a>
-              </div>
-            ))}
-            <div className="hidden lg:block"></div>
-          </div>
-        </div>
+        </div>     
       </div>
     </section>
   );
