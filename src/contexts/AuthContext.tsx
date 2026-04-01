@@ -200,7 +200,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     setLoggingOut(true);
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Sign out regardless of errors (expired session, network, etc.)
+    }
     window.location.href = "/";
   };
 

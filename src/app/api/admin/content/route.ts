@@ -11,13 +11,13 @@ export async function GET() {
 
     const { data, error } = await admin
       .from("app_content")
-      .select("value")
-      .eq("key", "site_content")
-      .single();
+      .select("data")
+      .eq("id", "main")
+      .maybeSingle();
 
-    if (error && error.code !== "PGRST116") throw error;
+    if (error) throw error;
 
-    return NextResponse.json({ content: data?.value ?? null });
+    return NextResponse.json({ content: data?.data ?? null });
   } catch (error) {
     console.error("[Admin Content GET]", error);
     return NextResponse.json(
@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest) {
 
     const { error } = await admin
       .from("app_content")
-      .upsert({ key: "site_content", value: body }, { onConflict: "key" });
+      .upsert({ id: "main", data: body.data ?? body }, { onConflict: "id" });
 
     if (error) throw error;
 

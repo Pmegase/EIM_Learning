@@ -48,20 +48,20 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Delete related records first
-    const { error: ticketsError } = await auth.admin
-      .from("event_tickets")
-      .delete()
-      .eq("event_id", id);
-
-    if (ticketsError) throw ticketsError;
-
+    // Delete related records first (registrations reference tickets, so delete them first)
     const { error: registrationsError } = await auth.admin
       .from("event_registrations")
       .delete()
       .eq("event_id", id);
 
     if (registrationsError) throw registrationsError;
+
+    const { error: ticketsError } = await auth.admin
+      .from("event_tickets")
+      .delete()
+      .eq("event_id", id);
+
+    if (ticketsError) throw ticketsError;
 
     const { error } = await auth.admin
       .from("events")
