@@ -1,6 +1,7 @@
 "use client"
 
 import { NavigationProvider } from "@/contexts/NavigationContext";
+import { useContent } from "@/contexts/ContentContext";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Services from "@/components/Services";
@@ -12,17 +13,27 @@ import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 
 export default function Home() {
+  const { isContentLoading } = useContent();
+
   return (
     <NavigationProvider>
       <Header />
-      <Hero />
-      <Services />
-      <About />
-      <Gallery />
-      <BlogSection />
-      <NewsletterSignup />
-      <Contact />
-      <Footer />
+      {isContentLoading ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent" />
+        </div>
+      ) : (
+        <>
+          <Hero />
+          <Services />
+          <About />
+          <Gallery />
+          <BlogSection />
+          <NewsletterSignup />
+          <Contact />
+          <Footer />
+        </>
+      )}
     </NavigationProvider>
   );
 }

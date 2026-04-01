@@ -6,7 +6,7 @@ import { useContent } from "@/contexts/ContentContext";
 import Image from "next/image";
 
 const Gallery = () => {
-  const { content } = useContent();
+  const { content, isContentLoading } = useContent();
   const images = content.carouselImages;
   const [current, setCurrent] = useState(0);
   const [lightbox, setLightbox] = useState<number | null>(null);
@@ -40,7 +40,7 @@ const Gallery = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [lightbox, images.length]);
 
-  if (!images.length) return null;
+  if (isContentLoading || !images.length) return null;
 
   return (
     <>
