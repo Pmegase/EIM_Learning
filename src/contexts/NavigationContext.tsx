@@ -1,74 +1,80 @@
-// src/contexts/NavigationContext.tsx
-import React, { createContext, useContext, ReactNode, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+"use client"
 
-type NavigationContextType = {
-    /**
-     * Navigate to a section on the landing page.
-     * - If already on "/", it smoothly scrolls to the element and updates the hash.
-     * - If on another route, it navigates to "/#sectionId" so the landing page can scroll on mount.
-     */
-    navigateToSection: (
-        sectionId: string,
-        options?: { replace?: boolean; behavior?: ScrollBehavior }
-    ) => void;
-};
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
-const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
-
-function normalizeId(sectionId: string): string {
-    if (!sectionId) return '';
-    return sectionId.startsWith('#') ? sectionId.slice(1) : sectionId;
+interface NavigationContextType {
+  navigateToSection: (sectionId: string) => void;
+  activeSection: string;
 }
 
-function scrollToId(id: string, behavior: ScrollBehavior = 'smooth') {
-    const el = document.getElementById(id);
-    if (!el) return false;
-    // A small rAF helps ensure layout is ready before scrolling.
-    requestAnimationFrame(() => el.scrollIntoView({ behavior, block: 'start' }));
-    return true;
-}
+const NavigationContext = createContext<NavigationContextType | null>(null);
 
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const isOnLanding = location.pathname === '/';
+  const router = useRouter();
+  const pathname = usePathname();
+  const [activeSection, setActiveSection] = useState("home");
 
-    const value = useMemo<NavigationContextType>(() => {
-        return {
-            navigateToSection: (rawId, options) => {
-                const id = normalizeId(rawId);
-                if (!id) return;
+  const navigateToSection = (sectionId: string) => {
+    if (pathname === "/") {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      router.push(`/#${sectionId}`);
+    }
+  };
 
-                if (isOnLanding) {
-                    // Try to scroll immediately
-                    const didScroll = scrollToId(id, options?.behavior ?? 'smooth');
+  // Scroll spy for homepage sections
+  useEffect(() => {
+    if (pathname !== "/") return;
 
-                    // Update hash so back/forward keeps section context; this won't reload the page.
-                    const targetHash = `#${id}`;
-                    const shouldReplace = options?.replace ?? false;
+    const sections = ["home", "services", "about", "gallery", "contact"];
 
-                    if (location.hash !== targetHash) {
-                        navigate(targetHash, { replace: shouldReplace });
-                    } else if (!didScroll) {
-                        // If hash already matches but element wasn't found yet, try a delayed scroll.
-                        // Useful when content renders after a tick.
-                        setTimeout(() => scrollToId(id, options?.behavior ?? 'smooth'), 0);
-                    }
-                } else {
-                    // Navigate to landing with hash; landing page can have an effect that scrolls on hash.
-                    navigate(`/#${id}`, { replace: options?.replace ?? false });
-                }
-            },
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOnLanding, location.hash, navigate]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => {
+            const aIdx = sections.indexOf(a.target.id);
+            const bIdx = sections.indexOf(b.target.id);
+            return aIdx - bIdx;
+          });
+        if (visible.length > 0) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      { rootMargin: "-40% 0px -40% 0px", threshold: 0 }
+    );
 
-    return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
+    sections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  // Set active based on pathname for non-homepage routes
+  useEffect(() => {
+    if (pathname === "/") return;
+    // Strip leading slash and take first segment
+    const segment = pathname.split("/")[1];
+    setActiveSection(segment || "home");
+  }, [pathname]);
+
+  return (
+    <NavigationContext.Provider value={{ navigateToSection, activeSection }}>
+      {children}
+    </NavigationContext.Provider>
+  );
 };
 
 export const useNavigation = () => {
-    const ctx = useContext(NavigationContext);
-    if (!ctx) throw new Error('useNavigation must be used within a NavigationProvider');
-    return ctx;
+  const context = useContext(NavigationContext);
+  if (!context) {
+    throw new Error("useNavigation must be used within a NavigationProvider");
+  }
+  return context;
 };

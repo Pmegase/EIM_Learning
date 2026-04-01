@@ -1,41 +1,23 @@
-// src/contexts/ContentContext.tsx
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  ReactNode,
-} from 'react';
-import { apiClient } from '@/services/apiClient';
-import { API_ENDPOINTS } from '@/config/api';
+"use client"
 
-// ---- Types --------------------------------------------------------------
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { apiPut } from "@/lib/api";
 
-export interface Service {
-  id?: number;                 // 👈 may be undefined for new rows
+interface Service {
+  id: string;
   title: string;
   description: string;
   icon: string;
   link?: string;
-  sortOrder?: number;
-  isActive?: boolean;
 }
 
 export interface TeamMember {
   id: string;
   name: string;
+  role: string;
   image: string;
   linkedin?: string;
-  role?: string;
-}
-
-export interface ContactInfo {
-  address: string;
-  email: string;
-  instagram: string;
-  facebook: string;
-  phone?: string;
 }
 
 export interface ContentData {
@@ -46,137 +28,149 @@ export interface ContentData {
   aboutUs: string;
   teamMembers: TeamMember[];
   carouselImages: string[];
-  contactInfo: ContactInfo;
+  contactInfo: {
+    address: string;
+    email: string;
+    instagram: string;
+    facebook: string;
+  };
 }
 
 interface ContentContextType {
   content: ContentData;
-  loading: boolean;
-  updateContent: (patch: Partial<ContentData>) => Promise<ContentData>;
-  uploadImage: (file: File) => Promise<string>;
-  refetch: () => Promise<void>;
+  updateContent: (newContent: Partial<ContentData>) => void;
+  saveContent: (dataToSave?: ContentData) => Promise<{ success: boolean; error?: string }>;
+  isContentLoading: boolean;
+  isAdmin: boolean;
+  setIsAdmin: (admin: boolean) => void;
 }
-
-// ---- Defaults -----------------------------------------------------------
 
 const defaultContent: ContentData = {
   heroTexts: [
-    'Advance your skills with us',
-    'Get connected with a Global Mentor',
-    'Advance your professional skill set and learn new things.',
+    "Advance your skills with us",
+    "Get connected with a Global Mentor",
+    "Advance your professional skill set and learn new things.",
   ],
-  services: [], // will be filled from /api/services
+  services: [
+    {
+      id: "1",
+      title: "Student internship program",
+      description:
+        "We provide students with out of classroom trainings, mentorship and direct industry experience.",
+      icon: "graduation-cap",
+    },
+    {
+      id: "2",
+      title: "Mentorship Program",
+      description:
+        "Our Interns, are paired with mentors who are drawn from across the globe, who guide them on their duties thereby ensuring organizational growth and development to any institution privileged to hire them.",
+      icon: "users",
+    },
+    {
+      id: "3",
+      title: "Professional trainings",
+      description:
+        "We provide High end trainings to Employees of our partners to keep them update with growing industry trends.",
+      icon: "briefcase",
+    },
+    {
+      id: "4",
+      title: "Courses",
+      description:
+        "Personal Branding, Public Speaking, CV writing, Opportunity identification, Minute Writing, Basic Excel Skills.",
+      icon: "book",
+    },
+  ],
   vision:
-    "To be the first-choice Student Consultancy in Africa that bridges the gap between employers and students, and provides out-of-classroom employability skills to reduce unemployment.",
+    "To be the first choice Student Consultancy in Africa that bridges the gap between Employers and students, and provides out of classroom employability skills to reduce employment.",
   mission:
-    "To provide a platform that facilitates youth leadership, unearths the potential of African youth, and creates an accountable networking space for the continent's transformation.",
+    "To provide a platform that will facilitate Youth leadership, unearth the Potential of the African youth and create an accountable networking space for the continent's transformation.",
   aboutUs:
-    'E.I.M Learning and Development Consult is a management consultancy providing corporate institutions with well qualified and professional interns. Our global mentorship programs, self-development workshops, internship programs, and accountability partnerships support both students and partner organizations.',
+    "E.I.M Learning and Development Consult is a management consultancy whose main focus is to provide corporate institutions and organizations with well qualified and professional Interns. Our Interns, are paired with mentors who are drawn from across the globe, who guide them on their duties thereby ensuring organizational growth and development to any institution privileged to hire them. We also provide High end trainings to Employees of our partners to keep them update with growing industry trends. This is achieved through our global mentorship programs, self- development workshops internship programs and accountability partnership.",
   teamMembers: [
     {
-      id: '1',
-      name: 'Paulina Osei Megase',
-      image: '/lovable-uploads/754ba608-8f59-43cc-9e98-817c6d80faac.png',
-      linkedin: 'https://www.linkedin.com/in/paulina-megase-820a2595/',
-      role: 'Founder',
+      id: "1",
+      name: "Paulina Osei Megase",
+      role: "Founder & CEO",
+      image: "/uploads/team-member.png",
+      linkedin: "https://www.linkedin.com/in/paulina-megase-820a2595/",
     },
   ],
   carouselImages: [
-    '/lovable-uploads/71dde14e-5105-4dd2-ba93-df4d27be3326.png',
-    '/lovable-uploads/754ba608-8f59-43cc-9e98-817c6d80faac.png',
-    '/lovable-uploads/f448dfc5-c8f8-41cf-a5a2-cd29fa41ac04.png',
+    "/uploads/gallery-1.png",
+    "/uploads/team-member.png",
+    "/uploads/gallery-3.png",
   ],
   contactInfo: {
-    address: 'Accra',
-    email: 'eimconsultld@gmail.com',
-    instagram: 'eimldconsult',
-    facebook: 'EIM Learning and Development Consult',
-    phone: '',
+    address: "Accra",
+    email: "eimconsultld@gmail.com",
+    instagram: "eimldconsult",
+    facebook: "EIM learning and development Consult",
   },
 };
-
-// ---- Helpers ------------------------------------------------------------
-
-function mergeContent(prev: ContentData, incoming: Partial<ContentData>): ContentData {
-  return {
-    ...prev,
-    ...incoming,
-    heroTexts: incoming.heroTexts ?? prev.heroTexts,
-    services: incoming.services ?? prev.services,
-    vision: incoming.vision ?? prev.vision,
-    mission: incoming.mission ?? prev.mission,
-    aboutUs: incoming.aboutUs ?? prev.aboutUs,
-    teamMembers: incoming.teamMembers ?? prev.teamMembers,
-    carouselImages: incoming.carouselImages ?? prev.carouselImages,
-    contactInfo: {
-      ...prev.contactInfo,
-      ...(incoming.contactInfo ?? {}),
-    },
-  };
-}
-
-const normalizeServices = (rows: Service[] = []): Service[] =>
-  rows
-    .filter((s) => s.isActive !== false) // default active if undefined
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-
-// ---- Context ------------------------------------------------------------
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
 export const ContentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [content, setContent] = useState<ContentData>(defaultContent);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isContentLoading, setIsContentLoading] = useState(true);
+  const supabase = createClient();
 
-  const refetch = async () => {
-    try {
-      const [contentData, servicesResp] = await Promise.all([
-        apiClient.get<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE),
-        apiClient.get<Service[]>(API_ENDPOINTS.SERVICES.BASE),
-      ]);
-
-      setContent(prev => {
-        const merged = mergeContent(prev, contentData ?? {});
-        merged.services = normalizeServices(servicesResp ?? []);
-        return merged;
-      });
-    } catch (err) {
-      console.error('Failed to fetch content/services:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
+  // Load content from database on mount
   useEffect(() => {
-    refetch();
+    const loadContent = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("app_content")
+          .select("data")
+          .eq("id", "main")
+          .maybeSingle();
+
+        if (data?.data) {
+          // Merge with defaults to ensure all keys exist
+          setContent((prev) => ({ ...prev, ...data.data }));
+        }
+      } catch {
+        // Silently fall back to defaults
+        console.warn("Failed to load CMS content from database, using defaults");
+      } finally {
+        setIsContentLoading(false);
+      }
+    };
+
+    loadContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const updateContent = async (patch: Partial<ContentData>) => {
-    const server = await apiClient.put<Partial<ContentData>>(API_ENDPOINTS.CONTENT.BASE, patch);
-    const merged = mergeContent(content, server ?? patch);
-    setContent(merged);
-    return merged;
-  };
+  // Update content in local state (for live preview in admin)
+  const updateContent = useCallback((newContent: Partial<ContentData>) => {
+    setContent((prev) => ({ ...prev, ...newContent }));
+  }, []);
 
-  const uploadImage = async (file: File): Promise<string> => {
-    const form = new FormData();
-    form.append('image', file);
-    const res = await apiClient.upload<{ imageUrl: string }>(API_ENDPOINTS.CONTENT.UPLOAD, form);
-    return res.imageUrl;
-  };
+  // Save content via API route (handles auth, upsert & activity logging server-side)
+  const saveContent = useCallback(async (dataToSave?: ContentData): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const payload = dataToSave || content;
+      await apiPut("/api/admin/content", { data: payload });
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save content";
+      return { success: false, error: message };
+    }
+  }, [content]);
 
-  const value = useMemo<ContentContextType>(
-    () => ({ content, loading, updateContent, uploadImage, refetch }),
-    [content, loading]
+  return (
+    <ContentContext.Provider value={{ content, updateContent, saveContent, isContentLoading, isAdmin, setIsAdmin }}>
+      {children}
+    </ContentContext.Provider>
   );
-
-  return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;
 };
 
 export const useContent = () => {
-  const ctx = useContext(ContentContext);
-  if (!ctx) throw new Error('useContent must be used within a ContentProvider');
-  return ctx;
+  const context = useContext(ContentContext);
+  if (context === undefined) {
+    throw new Error("useContent must be used within a ContentProvider");
+  }
+  return context;
 };
