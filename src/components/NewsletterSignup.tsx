@@ -11,9 +11,7 @@ const NewsletterSignup = () => {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { addSubscriber, subscribers } = useNewsletter();
-
-  const confirmedCount = subscribers.filter((s) => s.status === "confirmed").length;
+  const { addSubscriber, subscriberCount } = useNewsletter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,10 +90,10 @@ const NewsletterSignup = () => {
                   <Shield className="h-4 w-4 text-green-200" />
                   No spam, ever
                 </span>
-                {confirmedCount > 5 && (
+                {subscriberCount > 5 && (
                   <span className="flex items-center gap-1.5">
                     <Mail className="h-4 w-4 text-green-200" />
-                    {confirmedCount}+ subscribers
+                    {subscriberCount}+ subscribers
                   </span>
                 )}
               </div>

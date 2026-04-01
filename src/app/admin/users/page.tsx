@@ -16,8 +16,9 @@ import {
   Loader2, LayoutDashboard, LogOut, Briefcase, Users, Search,
   ChevronLeft, ChevronRight, ShieldCheck, GraduationCap, Building,
   Ban, CheckCircle, Trash2, KeyRound, ChevronDown, ChevronUp,
-  Mail, MapPin, Calendar, Eye, Download,
+  Mail, MapPin, Calendar, Eye, Download, MessageCircle,
 } from "lucide-react";
+import AdminChat from "@/components/admin/AdminChat";
 
 interface UserWithEmail {
   user_id: string;
@@ -39,6 +40,24 @@ interface Stats {
   mentors: number;
   corporate: number;
   admins: number;
+}
+
+interface UserProfile {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  headline: string | null;
+  bio: string | null;
+  location: string | null;
+  university: string | null;
+  field_of_study: string | null;
+  graduation_year: string | null;
+  skills: string[] | null;
+  interests: string[] | null;
+  linkedin_url: string | null;
+  portfolio_url: string | null;
+  github_url: string | null;
+  role: string;
 }
 
 const ROLE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -67,6 +86,20 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [chattingWith, setChattingWith] = useState<{ userId: string; userName: string } | null>(null);
+
+  const viewProfile = async (userId: string) => {
+    setProfileLoading(true);
+    try {
+      const { profile: p } = await apiGet<{ profile: UserProfile }>(`/api/user/profile/${userId}`);
+      setViewingProfile(p);
+    } catch {
+      toast({ title: "Failed to load profile", variant: "destructive" });
+    }
+    setProfileLoading(false);
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -233,7 +266,13 @@ export default function AdminUsersPage() {
                         <Avatar avatarUrl={u.avatar_url} size="sm" fallbackColor="green" />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium truncate">{u.full_name}</p>
+                            <button
+                              className="text-sm font-medium truncate text-green-700 hover:text-green-900 hover:underline"
+                              onClick={(e) => { e.stopPropagation(); viewProfile(u.user_id); }}
+                              title="View full profile"
+                            >
+                              {u.full_name}
+                            </button>
                             <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${rc.color}`}>
                               {rc.icon}{rc.label}
                             </span>
@@ -296,6 +335,20 @@ export default function AdminUsersPage() {
                             Reset Password
                           </Button>
 
+                          {/* View Profile */}
+                          <Button size="sm" variant="outline" onClick={() => viewProfile(u.user_id)} disabled={profileLoading}>
+                            {profileLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                            View Profile
+                          </Button>
+
+                          {/* Message User */}
+                          {u.user_id !== profile?.user_id && (
+                            <Button size="sm" variant="outline" onClick={() => setChattingWith({ userId: u.user_id, userName: u.full_name })}>
+                              <MessageCircle className="h-3 w-3 mr-1" />
+                              Message
+                            </Button>
+                          )}
+
                           {/* Delete */}
                           {u.user_id !== profile?.user_id && (
                             <Button size="sm" variant="destructive" onClick={() => handleDelete(u.user_id, u.full_name)} disabled={isUpdating}>
@@ -330,6 +383,108 @@ export default function AdminUsersPage() {
           </div>
         )}
       </main>
+
+      {/* Admin Chat */}
+      {chattingWith && (
+        <AdminChat
+          userId={chattingWith.userId}
+          userName={chattingWith.userName}
+          onClose={() => setChattingWith(null)}
+        />
+      )}
+
+      {/* Profile Modal */}
+      {viewingProfile && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setViewingProfile(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 space-y-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar avatarUrl={viewingProfile.avatar_url} size="md" fallbackColor="green" />
+                  <div>
+                    <h2 className="text-lg font-bold">{viewingProfile.full_name}</h2>
+                    {viewingProfile.headline && <p className="text-sm text-muted-foreground">{viewingProfile.headline}</p>}
+                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium mt-1 ${ROLE_CONFIG[viewingProfile.role]?.color || "bg-gray-100 text-gray-700"}`}>
+                      {ROLE_CONFIG[viewingProfile.role]?.icon}
+                      {ROLE_CONFIG[viewingProfile.role]?.label || viewingProfile.role}
+                    </span>
+                  </div>
+                </div>
+                <button onClick={() => setViewingProfile(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+              </div>
+
+              {viewingProfile.bio && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">Bio</h3>
+                  <p className="text-sm text-gray-700">{viewingProfile.bio}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {viewingProfile.location && (
+                  <div><span className="text-xs text-gray-500">Location</span><p className="flex items-center gap-1"><MapPin className="h-3 w-3 text-gray-400" />{viewingProfile.location}</p></div>
+                )}
+                {viewingProfile.university && (
+                  <div><span className="text-xs text-gray-500">University</span><p className="flex items-center gap-1"><GraduationCap className="h-3 w-3 text-gray-400" />{viewingProfile.university}</p></div>
+                )}
+                {viewingProfile.field_of_study && (
+                  <div><span className="text-xs text-gray-500">Field of Study</span><p>{viewingProfile.field_of_study}</p></div>
+                )}
+                {viewingProfile.graduation_year && (
+                  <div><span className="text-xs text-gray-500">Graduation Year</span><p>{viewingProfile.graduation_year}</p></div>
+                )}
+              </div>
+
+              {viewingProfile.skills?.length ? (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">Skills</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {viewingProfile.skills.map((s, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {viewingProfile.interests?.length ? (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">Interests</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {viewingProfile.interests.map((s, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {(viewingProfile.linkedin_url || viewingProfile.portfolio_url || viewingProfile.github_url) && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">Links</h3>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {viewingProfile.linkedin_url && <a href={viewingProfile.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">LinkedIn</a>}
+                    {viewingProfile.portfolio_url && <a href={viewingProfile.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">Portfolio</a>}
+                    {viewingProfile.github_url && <a href={viewingProfile.github_url} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:underline">GitHub</a>}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t flex gap-2">
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setChattingWith({ userId: viewingProfile.user_id, userName: viewingProfile.full_name });
+                    setViewingProfile(null);
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  Message
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => setViewingProfile(null)}>Close</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

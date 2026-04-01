@@ -8,6 +8,7 @@ import type { NewsletterSubscriber, NewsletterCampaign } from "@/types/blog";
 interface NewsletterContextType {
   subscribers: NewsletterSubscriber[];
   campaigns: NewsletterCampaign[];
+  subscriberCount: number;
   loading: boolean;
   addSubscriber: (email: string, name?: string) => Promise<{ success: boolean; message: string }>;
   removeSubscriber: (id: string) => Promise<void>;
@@ -24,9 +25,20 @@ const NewsletterContext = createContext<NewsletterContextType | undefined>(undef
 export const NewsletterProvider = ({ children }: { children: ReactNode }) => {
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
+  const [subscriberCount, setSubscriberCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
+  // Public: fetch confirmed subscriber count (no admin auth needed)
+  const fetchSubscriberCount = useCallback(async () => {
+    const { count } = await supabase
+      .from("newsletter_subscribers")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "confirmed");
+    setSubscriberCount(count ?? 0);
+  }, [supabase]);
+
+  // Admin-only: fetch full subscriber + campaign data
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -36,17 +48,19 @@ export const NewsletterProvider = ({ children }: { children: ReactNode }) => {
       ]);
       setSubscribers(subRes.subscribers || []);
       setCampaigns(campRes.campaigns || []);
+      setSubscriberCount((subRes.subscribers || []).filter((s) => s.status === "confirmed").length);
     } catch {
-      // Unauthenticated users will get a 401 — just show empty state
-      setSubscribers([]);
-      setCampaigns([]);
+      // Non-admin users will get 401 — just keep empty state
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
+    // Fetch public subscriber count for all users
+    fetchSubscriberCount();
+    // Fetch admin data (will silently fail for non-admins)
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, fetchSubscriberCount]);
 
   const addSubscriber = async (email: string, name?: string) => {
     const normalized = email.toLowerCase().trim();
@@ -59,7 +73,7 @@ export const NewsletterProvider = ({ children }: { children: ReactNode }) => {
         const token = crypto.randomUUID();
         await supabase.from("newsletter_subscribers").update({ status: "pending", confirm_token: token }).eq("id", existing.id);
         await fetch("/api/newsletter/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalized, name, token }) }).catch(() => {});
-        await fetchData();
+        await fetchSubscriberCount();
         return { success: true, message: "Please check your email to confirm" };
       }
     }
@@ -78,7 +92,7 @@ export const NewsletterProvider = ({ children }: { children: ReactNode }) => {
     }
 
     await fetch("/api/newsletter/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalized, name, token }) }).catch(() => {});
-    await fetchData();
+    await fetchSubscriberCount();
     return { success: true, message: "Please check your email to confirm your subscription" };
   };
 
@@ -124,7 +138,7 @@ export const NewsletterProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <NewsletterContext.Provider
-      value={{ subscribers, campaigns, loading, addSubscriber, removeSubscriber, isSubscribed, confirmSubscriber, addCampaign, updateCampaign, deleteCampaign, refresh: fetchData }}
+      value={{ subscribers, campaigns, subscriberCount, loading, addSubscriber, removeSubscriber, isSubscribed, confirmSubscriber, addCampaign, updateCampaign, deleteCampaign, refresh: fetchData }}
     >
       {children}
     </NewsletterContext.Provider>

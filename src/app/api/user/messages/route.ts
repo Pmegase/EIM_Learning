@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (mentorship.status !== "active") {
+    if (mentorship.status !== "active" && mentorship.status !== "admin_direct") {
       return NextResponse.json({ error: "Mentorship is not active" }, { status: 400 });
     }
 

@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
   const { content, updateContent, saveContent } = useContent();
   const [loading, setLoading] = useState(false);
   const [localContent, setLocalContent] = useState<ContentData>(content);
-  const { logout, isAuthenticated, user, profile } = useAuth();
+  const { logout, isAuthenticated, user, profile, role } = useAuth();
   const { posts, addPost, updatePost, deletePost } = useBlog();
   const { subscribers, campaigns, removeSubscriber, addCampaign, updateCampaign, deleteCampaign } = useNewsletter();
 
@@ -81,7 +81,7 @@ export default function AdminDashboardPage() {
       }
       setSettingsLoaded(true);
     };
-    if (isAuthenticated) fetchSettings();
+    if (isAuthenticated && role === "admin") fetchSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -114,7 +114,7 @@ export default function AdminDashboardPage() {
       }
       setMentorLoading(false);
     };
-    if (isAuthenticated) fetchApplications();
+    if (isAuthenticated && role === "admin") fetchApplications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -398,6 +398,7 @@ export default function AdminDashboardPage() {
             <TabsTrigger value="store">Store</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
+            <TabsTrigger value="guide">Guide</TabsTrigger>
           </TabsList>
 
           {/* ===== HERO TAB ===== */}
@@ -1427,6 +1428,142 @@ export default function AdminDashboardPage() {
           {/* ===== ACTIVITY TAB ===== */}
           <TabsContent value="activity">
             <ActivityFeed />
+          </TabsContent>
+
+          {/* ===== GUIDE TAB ===== */}
+          <TabsContent value="guide">
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Admin Manual</CardTitle></CardHeader>
+              <CardContent className="prose prose-sm max-w-none space-y-6">
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h3 className="text-green-800 font-semibold mt-0">Welcome, Admin</h3>
+                  <p className="text-green-700 text-sm mb-0">This guide covers every feature available to you. Use the tabs above to manage each section of the site. Changes to CMS content require clicking <strong>Save Changes</strong> to take effect.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">CMS Content Tabs</h3>
+
+                  <div>
+                    <h4 className="font-medium">Hero</h4>
+                    <p className="text-sm text-gray-600">Edit the rotating hero texts and background image shown on the homepage landing section.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">About</h4>
+                    <p className="text-sm text-gray-600">Update the Vision, Mission, and About Us text displayed on the homepage.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Services</h4>
+                    <p className="text-sm text-gray-600">Add, edit, or remove service cards. Each card has a title, description, and icon.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Management</h4>
+                    <p className="text-sm text-gray-600">Manage team members shown on the site. Upload photos and set LinkedIn profile links.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Gallery</h4>
+                    <p className="text-sm text-gray-600">Upload images to the gallery carousel. Images are stored in Supabase Storage. Click the trash icon to remove an image.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Contact</h4>
+                    <p className="text-sm text-gray-600">Edit the office address, email, and social media handles shown in the contact section and footer.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Blog</h3>
+                  <p className="text-sm text-gray-600">Create, edit, and delete blog posts. Posts can be:</p>
+                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    <li><strong>Published</strong> — immediately visible on the site</li>
+                    <li><strong>Draft</strong> — saved but not visible to the public</li>
+                    <li><strong>Scheduled</strong> — set a draft with a future date; a cron job auto-publishes it when the time arrives</li>
+                  </ul>
+                  <p className="text-sm text-gray-600">Each post needs a title (slug is auto-generated), excerpt, content (rich text editor), category, tags, and a cover image.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Newsletter</h3>
+                  <p className="text-sm text-gray-600">Manage subscribers and campaigns:</p>
+                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    <li><strong>Subscribers</strong> — view confirmed/pending subscribers. Remove individual subscribers if needed.</li>
+                    <li><strong>Campaigns</strong> — create email campaigns with a subject, content, and optional preview text. Campaigns can be sent immediately or scheduled. A cron job checks every 15 minutes for due campaigns.</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Mentor Applications</h3>
+                  <p className="text-sm text-gray-600">Review incoming mentor applications. A red badge on the tab shows the number of pending applications. You can:</p>
+                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    <li><strong>Approve</strong> — the user&apos;s role is changed to &quot;mentor&quot; and they gain access to mentorship features</li>
+                    <li><strong>Reject</strong> — provide a reason; the applicant is notified</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Store</h3>
+                  <p className="text-sm text-gray-600">Manage the resource store. Add items with a title, description, price (or free), images, category, and purchase/download link. Items can be featured and toggled between active/draft status.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Settings</h3>
+                  <p className="text-sm text-gray-600">Configure the email provider used for sending all transactional and newsletter emails. Options:</p>
+                  <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    <li><strong>Gmail SMTP</strong> — uses Google SMTP with an app password (set via environment variables)</li>
+                    <li><strong>Resend</strong> — uses the Resend API (requires RESEND_API_KEY environment variable)</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Other Admin Pages</h3>
+
+                  <div>
+                    <h4 className="font-medium">User Management (header button)</h4>
+                    <p className="text-sm text-gray-600">View all registered users with search and filters. For each user you can: view their full profile, change their role, suspend/reactivate their account, send a password reset email, send them a direct message, or permanently delete their account.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Jobs (header button)</h4>
+                    <p className="text-sm text-gray-600">Create and manage job postings. Review applications submitted by users, update application statuses, and manage company-posted jobs.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Mentorships (header button)</h4>
+                    <p className="text-sm text-gray-600">View and manage all active mentorship pairings. Update statuses, add admin notes, and monitor mentorship progress.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Events (header button)</h4>
+                    <p className="text-sm text-gray-600">Create and manage events with ticket types, registration tracking, and attendee management.</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium">Analytics (header button)</h4>
+                    <p className="text-sm text-gray-600">View platform statistics: user growth, mentorship metrics, event attendance, and job application data.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Activity Feed</h3>
+                  <p className="text-sm text-gray-600">The Activity tab shows a chronological log of all admin and user actions on the platform — content saves, user signups, mentor approvals, etc. Filter by Admin or User actions. The feed is paginated (20 entries per page).</p>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <h3 className="text-amber-800 font-semibold mt-0">Important Notes</h3>
+                  <ul className="text-sm text-amber-700 list-disc pl-5 space-y-1 mb-0">
+                    <li>Always click <strong>Save Changes</strong> after editing CMS content — changes are live-previewed but not persisted until saved.</li>
+                    <li>Deleting a user is permanent and cannot be undone.</li>
+                    <li>Environment variables (Supabase keys, email credentials, CRON_SECRET) must be configured in Vercel for production.</li>
+                    <li>The Supabase Dashboard &gt; Authentication &gt; URL Configuration must have the production Site URL set for confirmation emails to work correctly.</li>
+                  </ul>
+                </div>
+
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
