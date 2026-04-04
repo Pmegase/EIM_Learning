@@ -1,0 +1,33 @@
+# EIM Learning and Development Consult
+
+> Management consultancy bridging the gap between employers and students across Africa through mentorship, internships, and professional training.
+
+EIM (Excellence In Management) Learning and Development Consult is based in Accra, Ghana. The organization focuses on youth leadership, student employability, and corporate training.
+
+## Core Programs
+
+- **Student Internship Program**: Out-of-classroom training, mentorship, and direct industry experience for students.
+- **Mentorship Program**: Pairing interns with global mentors who guide them through professional development.
+- **Professional Training**: High-end training for corporate partner employees on industry trends.
+- **Courses**: Personal branding, public speaking, CV writing, opportunity identification, minute writing, and Excel skills.
+
+## Key Pages
+
+- Homepage: https://www.eimconsultld.com/
+- Blog: https://www.eimconsultld.com/blog
+- Job Openings: https://www.eimconsultld.com/jobs
+- Mentors: https://www.eimconsultld.com/mentors
+- Events: https://www.eimconsultld.com/events
+- Resource Store: https://www.eimconsultld.com/store
+- FAQ: https://www.eimconsultld.com/faq
+
+## Feeds
+
+- RSS: https://www.eimconsultld.com/blog/feed.xml
+- Sitemap: https://www.eimconsultld.com/sitemap.xml
+
+## Contact
+
+- Email: eimconsultld@gmail.com
+- Location: Accra, Ghana
+- Instagram: @eimldconsult
