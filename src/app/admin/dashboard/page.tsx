@@ -633,7 +633,7 @@ export default function AdminDashboardPage() {
                         id: Date.now().toString(),
                         name: newMemberForm.name.trim(),
                         role: newMemberForm.role.trim(),
-                        image: newMemberForm.image || "/uploads/team-member.png",
+                        image: newMemberForm.image || "",
                         linkedin: newMemberForm.linkedin.trim() || undefined,
                       };
                       const updated = [...localContent.teamMembers, newMember];
